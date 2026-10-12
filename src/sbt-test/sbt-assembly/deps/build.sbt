@@ -1,38 +1,33 @@
-import AssemblyKeys._
-
 version := "0.1"
+scalaVersion := "2.12.18"
 
-assemblySettings
-
-scalaVersion := "2.9.1"
-
-libraryDependencies += "org.scalatest" % "scalatest_2.9.0" % "1.6.1" % "test"
-
-libraryDependencies += "com.weiglewilczek.slf4s" %% "slf4s" % "1.0.7"
-
-libraryDependencies += "ch.qos.logback" % "logback-classic" % "0.9.29" % "runtime"
-
-unmanagedJars in Compile <++= baseDirectory map { base =>
-   (base / "lib" / "compile" ** "*.jar").classpath
-}
-
-unmanagedJars in Runtime <++= baseDirectory map { base =>
-   (base / "lib" / "runtime" ** "*.jar").classpath
-}
-
-unmanagedJars in Test <++= baseDirectory map { base =>
-   (base / "lib" / "test" ** "*.jar").classpath
-}
-
-excludedJars in assembly <<= (fullClasspath in assembly) map { cp => 
-  cp filter {_.data.getName == "compile-0.1.0.jar"}
-}
-
-jarName in assembly := "foo.jar"
-
-TaskKey[Unit]("check") <<= (target) map { (target) =>
-  val process = sbt.Process("java", Seq("-jar", (target / "foo.jar").toString))
-  val out = (process!!)
-  if (out.trim != "hello") error("unexpected output: " + out)
-  ()
-}
+lazy val root = (project in file("."))
+  .settings(
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test",
+    libraryDependencies += "ch.qos.logback" % "logback-classic" % "0.9.29" % "runtime",
+    Compile / unmanagedJars ++= {
+      val conv = fileConverter.value
+      implicit val c: xsbti.FileConverter = conv
+      (baseDirectory.value / "lib" / "compile" ** "*.jar").classpath
+    },
+    Runtime / unmanagedJars ++= {
+      val conv = fileConverter.value
+      implicit val c: xsbti.FileConverter = conv
+      (baseDirectory.value / "lib" / "runtime" ** "*.jar").classpath
+    },
+    Test / unmanagedJars ++= {
+      val conv = fileConverter.value
+      implicit val c: xsbti.FileConverter = conv
+      (baseDirectory.value / "lib" / "test" ** "*.jar").classpath
+    },
+    assemblyExcludedJars := {
+      (assembly / fullClasspath).value.filter { _.data.toString().endsWith("compile-0.1.0.jar") }
+    },
+    assembly / assemblyJarName := "foo.jar",
+    TaskKey[Unit]("check") := {
+      val process = sys.process.Process("java", Seq("-jar", (crossTarget.value / "foo.jar").toString))
+      val out = process.!!
+      if (out.trim != "hello") sys.error("unexpected output: " + out)
+      ()
+    }
+  )

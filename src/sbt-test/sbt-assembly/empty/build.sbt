@@ -1,5 +1,3 @@
-import AssemblyKeys._
-
 version := "0.1"
-
-assemblySettings
+scalaVersion := "2.12.18"
+name := "foo"

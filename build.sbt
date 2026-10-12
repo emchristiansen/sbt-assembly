@@ -1,48 +1,82 @@
-sbtPlugin := true
-
-name := "sbt-assembly"
-
-organization := "com.eed3si9n"
-
-version := "0.8.7-SNAPSHOT"
-
-CrossBuilding.crossSbtVersions := Seq("0.11.3", "0.11.2" ,"0.12")
-
-description := "sbt plugin to create a single fat jar"
-
-licenses := Seq("MIT License" -> url("https://github.com/sbt/sbt-assembly/blob/master/LICENSE"))
-
-scalacOptions := Seq("-deprecation", "-unchecked")
-
-publishArtifact in (Compile, packageBin) := true
-
-publishArtifact in (Test, packageBin) := false
-
-publishArtifact in (Compile, packageDoc) := false
-
-publishArtifact in (Compile, packageSrc) := false
-
-// CrossBuilding.scriptedSettings
-ScriptedPlugin.scriptedSettings
-
-scriptedLaunchOpts ++= Seq("-Xmx1024M", "-XX:MaxPermSize=256M")
-
-scriptedBufferLog := false
-
-publishMavenStyle := false
-
-publishTo <<= (version) { version: String =>
-   val scalasbt = "http://scalasbt.artifactoryonline.com/scalasbt/"
-   val (name, u) = if (version.contains("-SNAPSHOT")) ("sbt-plugin-snapshots", scalasbt+"sbt-plugin-snapshots")
-                   else ("sbt-plugin-releases", scalasbt+"sbt-plugin-releases")
-   Some(Resolver.url(name, url(u))(Resolver.ivyStylePatterns))
+ThisBuild / version := {
+  val old = (ThisBuild / version).value
+  if ((ThisBuild / isSnapshot).value) "2.4.1-SNAPSHOT"
+  else old
 }
 
-credentials += Credentials(Path.userHome / ".ivy2" / ".sbtcredentials")
+ThisBuild / organization := "com.eed3si9n"
 
-lsSettings
+def scala212 = "2.12.20"
+def scala3 = "3.8.4"
+ThisBuild / crossScalaVersions := Seq(scala212, scala3)
+ThisBuild / scalaVersion := scala3
 
-LsKeys.tags in LsKeys.lsync := Seq("sbt", "jar")
+lazy val jarjar = "com.eed3si9n.jarjarabrams" %% "jarjar-abrams-core" % "1.18.0"
 
-(externalResolvers in LsKeys.lsync) := Seq(
-  "sbt-plugin-releases" at "http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases")
+lazy val root = (project in file("."))
+  .enablePlugins(SbtPlugin, ContrabandPlugin)
+  .settings(nocomma {
+    name := "sbt-assembly"
+    scalacOptions ++= {
+      scalaBinaryVersion.value match {
+        case "3" =>
+          Nil
+        case _ =>
+          Seq(
+            "-release:8",
+            "-Xsource:3",
+            "-Xfuture",
+          )
+      }
+    }
+    scalacOptions ++= Seq(
+      "-deprecation",
+      "-unchecked",
+      "-Dscalac.patmat.analysisBudget=1024",
+    )
+    libraryDependencies += jarjar
+    addSbtPlugin("com.github.sbt" % "sbt2-compat" % "0.1.0")
+    (pluginCrossBuild / sbtVersion) := {
+      scalaBinaryVersion.value match {
+        case "2.12" => "1.5.8"
+        case _      => "2.0.0"
+      }
+    }
+    scriptedSbt := {
+      scalaBinaryVersion.value match {
+        case "2.12" => "1.10.7"
+        case _      => "2.0.3"
+      }
+    }
+    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "scala"
+    scriptedLaunchOpts := { scriptedLaunchOpts.value ++
+      Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
+    }
+    scriptedBufferLog := false
+  })
+
+ThisBuild / scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/sbt/sbt-assembly"),
+    "scm:git@github.com:sbt/sbt-assembly.git"
+  )
+)
+ThisBuild / developers := List(
+  Developer(
+    id    = "eed3si9n",
+    name  = "Eugene Yokota",
+    email = "@eed3si9n",
+    url   = url("https://eed3si9n.com/")
+  ),
+)
+ThisBuild / description := "sbt plugin to create a single über jar"
+ThisBuild / homepage := Some(url("https://github.com/sbt/sbt-assembly"))
+ThisBuild / licenses := Seq(License.MIT)
+ThisBuild / pomIncludeRepository := { _ => false }
+ThisBuild / publishTo := {
+  val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+  val v = (ThisBuild / version).value
+  if (v.endsWith("SNAPSHOT")) Some("central-snapshots" at centralSnapshots)
+  else localStaging.value
+}
+ThisBuild / publishMavenStyle := true

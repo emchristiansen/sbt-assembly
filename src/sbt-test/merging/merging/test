@@ -1,0 +1,11 @@
+> clean
+> set ThisBuild / exportJars := false
+> assembly
+$ exists target/**/foo.jar
+> check
+
+> clean
+> set ThisBuild / exportJars := true
+> assembly
+$ exists target/**/foo.jar
+> check

@@ -1,0 +1,7 @@
+# Test that assembly contains shaded classes
+# but the original classes are left untouched.
+
+> assembly
+> check
+
+> unzip

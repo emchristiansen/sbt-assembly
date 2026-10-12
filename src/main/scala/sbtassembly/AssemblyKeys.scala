@@ -1,0 +1,39 @@
+package sbtassembly
+
+import com.eed3si9n.jarjarabrams
+import sbt.Keys.*
+import sbt.*
+import sbtcompat.PluginCompat.FileRef
+
+trait AssemblyKeys {
+  @transient
+  lazy val assembly                  = taskKey[FileRef]("Builds a deployable über JAR")
+  lazy val assembleArtifact          = settingKey[Boolean]("Enables (true) or disables (false) assembling an artifact")
+
+  @transient
+  lazy val assemblyOption            = taskKey[AssemblyOption]("Configuration for making a deployable über JAR")
+
+  @transient
+  lazy val assemblyPackageScala      = taskKey[FileRef]("Produces the Scala artifact")
+
+  @transient
+  lazy val assemblyPackageDependency = taskKey[FileRef]("Produces the dependency artifact")
+  lazy val assemblyJarName           = taskKey[String]("name of the über jar")
+  lazy val assemblyDefaultJarName    = taskKey[String]("default name of the über jar")
+  @transient
+  lazy val assemblyOutputPath        = taskKey[File]("output path of the über jar")
+
+  @transient
+  lazy val assemblyExcludedJars      = taskKey[Classpath]("list of excluded jars")
+  lazy val assemblyMergeStrategy     = settingKey[String => MergeStrategy]("mapping from archive member path to merge strategy")
+  lazy val assemblyShadeRules        = settingKey[Seq[jarjarabrams.ShadeRule]]("shading rules backed by jarjar")
+  lazy val assemblyAppendContentHash = settingKey[Boolean]("Appends SHA-1 fingerprint to the assembly file name")
+  lazy val assemblyMaxHashLength     = settingKey[Int]("Length of SHA-1 fingerprint used for the assembly file name")
+  lazy val assemblyCacheOutput       = settingKey[Boolean]("Enables (true) or disables (false) cacheing the output if the content has not changed")
+  lazy val assemblyPrependShellScript = settingKey[Option[Seq[String]]]("A launch script to prepend to the über JAR")
+  lazy val assemblyFailOnShadeError  = settingKey[Boolean]("Fails the build when an entry cannot be shaded, instead of keeping it unshaded or dropping it")
+  lazy val assemblyRepeatableBuild   = settingKey[Boolean]("If (true), builds the jar with a consistent hash (given the same inputs/assembly configuration) so it can be cached, but loses parallelism optimization. " +
+                                                                       "If (false), builds the jar faster via parallelization, but loses hash consistency, and hence, cannot be cached")
+}
+
+object AssemblyKeys extends AssemblyKeys

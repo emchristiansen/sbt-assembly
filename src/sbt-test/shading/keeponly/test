@@ -1,0 +1,5 @@
+# check if the file gets created
+> +assembly
+
+# check if it says hello
+> +check

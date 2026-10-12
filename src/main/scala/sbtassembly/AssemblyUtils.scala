@@ -1,29 +1,67 @@
 package sbtassembly
 
-import sbt._
+import java.io.{ ByteArrayInputStream, InputStream }
+import scala.collection.mutable
 
-object AssemblyUtils {
-  private val PathRE = "([^/]+)/(.*)".r
+private[sbtassembly] object AssemblyUtils {
 
-  /** Find the source file (and possibly the entry within a jar) whence a conflicting file came.
-   * 
-   * @param tempDir The temporary directory provided to a `MergeStrategy`
-   * @param f One of the files provided to a `MergeStrategy`
-   * @return The source jar or dir; the path within that dir; and true if it's from a jar.
+  /**
+   * Checks if an [[InputStream]] ends with the given eof string and adds it if not
+   *
+   * @param is input stream to check
+   * @param eof the terminating string to add at the end if needed
    */
-  def sourceOfFileForMerge(tempDir: File, f: File): (File, File, String, Boolean) = {
-    val baseURI = tempDir.getCanonicalFile.toURI
-    val otherURI = f.getCanonicalFile.toURI
-    val relative = baseURI.relativize(otherURI)
-    val PathRE(head, tail) = relative.getPath
-    val base = tempDir / head
+  class AppendEofInputStream(is: InputStream, eof: String) extends InputStream {
+    private val readBytesQ: mutable.Queue[Int] = mutable.Queue()
+    private val eofBytes = eof.map(_.toByte).toArray
+    private val maxQueueSize = eof.length
+    private val eofStream = new ByteArrayInputStream(eofBytes)
+    private var source = is
 
-    if ((tempDir / (head + ".jarName")) exists) {
-      val jarName = IO.read(tempDir / (head + ".jarName"), IO.utf8)
-      (new File(jarName), base, tail, true)
-    } else {
-      val dirName = IO.read(tempDir / (head + ".dir"), IO.utf8)
-      (new File(dirName), base, tail, false)
-    } // if-else
+    private def enqueue(i: Int): Unit = {
+      if (i > 0) readBytesQ.enqueue(i)
+      if (readBytesQ.size > maxQueueSize) readBytesQ.dequeue()
+    }
+
+    override def read(): Int =
+      readWithEnqueue(() => source.read(), enqueue)
+
+    override def read(b: Array[Byte], off: Int, len: Int): Int =
+      readWithEnqueue(() => source.read(b, off, len), {
+        case -1 => ()
+        case bytesRead => (off until off + bytesRead).foreach(i => enqueue(b(i).toInt))
+      })
+
+    override def close(): Unit = {
+      is.close()
+      eofStream.close()
+    }
+
+    private def readWithEnqueue(read: () => Int, enqueue: Int => Unit): Int = {
+      val byte = read()
+      if (byte != -1) {
+        enqueue(byte)
+        byte
+      } else {
+        val lastBytesStored = readBytesQ.dequeueAll(_ => true)
+        if (lastBytesStored.toArray.map(_.toByte) sameElements eofBytes)
+          -1
+        else {
+          source = eofStream
+          read()
+        }
+      }
+    }
+  }
+
+  object AppendEofInputStream {
+
+    /**
+     * Creates an [[AppendEofInputStream]]
+     * @param is input stream to check
+     * @param eof the terminating string to add at the end if needed
+     * @return an [[AppendEofInputStream]] instance
+     */
+    def apply(is: InputStream, eof: String = "\n") = new AppendEofInputStream(is, eof)
   }
 }

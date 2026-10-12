@@ -1,0 +1,61 @@
+name: CI
+on:
+  pull_request:
+  push:
+  schedule:
+  - cron: '0 21 * * 0'
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            java: 8
+            distribution: zulu
+            jobtype: sbt-1
+          - os: ubuntu-latest
+            java: 17
+            distribution: temurin
+            jobtype: sbt-2
+          - os: ubuntu-latest
+            java: 21
+            distribution: temurin
+            jobtype: sbt-1
+          - os: ubuntu-latest
+            java: 25
+            distribution: zulu
+            jobtype: sbt-1
+          - os: windows-latest
+            java: 11
+            distribution: temurin
+            jobtype: sbt-1
+          - os: windows-latest
+            java: 17
+            distribution: temurin
+            jobtype: sbt-2
+    env:
+      # define Java options for both official sbt and sbt-extras
+      JAVA_OPTS: -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M -Dfile.encoding=UTF-8
+      JVM_OPTS:  -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M -Dfile.encoding=UTF-8
+    steps:
+    - uses: actions/checkout@v7
+    - name: Setup JDK
+      uses: actions/setup-java@v6
+      with:
+        distribution: "${{ matrix.distribution }}"
+        java-version: "${{ matrix.java }}"
+        cache: sbt
+    - uses: sbt/setup-sbt@v1
+    - name: Build and test (sbt 1.x)
+      if: ${{ matrix.jobtype == 'sbt-1' }}
+      shell: bash
+      run: |
+        sbt -v ++2.12.x scripted
+    - name: Build and test (sbt 2.x)
+      if: ${{ matrix.jobtype == 'sbt-2' }}
+      shell: bash
+      run: |
+        sbt -v ++3.x scripted
