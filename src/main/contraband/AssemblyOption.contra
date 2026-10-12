@@ -1,0 +1,35 @@
+package sbtassembly
+@target(Scala)
+
+type AssemblyOption {
+  ## include compiled class files from itself or subprojects
+  includeBin: Boolean! = true @since("0.15.0")
+
+  includeScala: Boolean! = true @since("0.15.0")
+
+  ## include class files from external dependencies
+  includeDependency: Boolean! = true @since("0.15.0")
+
+  excludedJars: sbt.Keys.Classpath! = raw"Nil" @since("0.15.0")
+
+  repeatableBuild: Boolean! = true @since("2.0.0")
+
+  mergeStrategy: sbtassembly.MergeStrategy.StringToMergeStrategy! = raw"sbtassembly.MergeStrategy.defaultMergeStrategy" @since("0.15.0")
+
+  cacheOutput: Boolean! = true @since("0.15.0")
+
+  appendContentHash: Boolean! = false @since("0.15.0")
+
+  prependShellScript: sbtassembly.Assembly.SeqString @since("0.15.0")
+
+  maxHashLength: Int @since("0.15.0")
+
+  shadeRules: sbtassembly.Assembly.SeqShadeRules! = raw"sbtassembly.Assembly.defaultShadeRules" @since("0.15.0")
+
+  scalaVersion: String! = "" @since("0.15.0")
+
+  level: sbt.Level.Value! = raw"sbt.Level.Info" @since("0.15.0")
+
+  ## fail the build when an entry cannot be shaded, instead of keeping it unshaded
+  failOnShadeError: Boolean! = true @since("2.4.1")
+}

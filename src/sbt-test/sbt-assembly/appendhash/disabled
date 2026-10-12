@@ -1,0 +1,16 @@
+# check if it generates the expected hash
+> assembly
+> checkFile "foo-assembly-0.1-[0-9abcdef]{40}.jar"
+
+# check if it generates the expected hash given caching
+> clean
+> assembly
+> checkPrevious
+
+> assemblyPackageDependency
+> checkFile "foo-assembly-0.1-deps-[0-9abcdef]{40}.jar"
+
+> set ThisBuild / assemblyMaxHashLength := 5
+> clean
+> assembly
+> checkFile "foo-assembly-0.1-[0-9abcdef]{5}.jar"
